@@ -1,0 +1,36 @@
+{
+    "_detectorOption": [
+        "HARRIS",
+        "SHITOMASI",
+        "FAST",
+        "BRISK",
+        "ORB",
+        "AKAZE",
+        "SIFT"
+    ],
+    "_descriptorMethodOption": [
+        "BRISK",
+        "BRIEF",
+        "ORB",
+        "FREAK",
+        "AKAZE",
+        "SIFT"
+    ],
+    "_matcherOption": [
+        "MAT_BF",
+        "MAT_FLANN"
+    ],
+    "_descriptorOption": [
+        "DES_BINARY",
+        "DES_HOG"
+    ],
+    "_selectorOption": [
+        "SEL_NN",
+        "SEL_KNN"
+    ],
+    "detectorType": "HARRIS",
+    "descriptorMethod": "BRISK",
+    "matcherType": "MAT_BF",
+    "descriptorType": "DES_BINARY",
+    "selectorType": "SEL_KNN"
+}

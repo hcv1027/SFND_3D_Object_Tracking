@@ -22,24 +22,66 @@
 
 using namespace std;
 
+struct Params {
+  string detectorType;
+  string descriptorMethod;
+  string matcherType;
+  string descriptorType;
+  string selectorType;
+
+  Params() = default;
+  ~Params() = default;
+};
+
+Params params;
+
+void readConfig() {
+  using json = nlohmann::json;
+
+  std::ifstream json_stream("../src/config/params.json");
+  json params_json;
+  json_stream >> params_json;
+  json_stream.close();
+
+  params.detectorType = params_json["detectorType"];
+  params.descriptorMethod = params_json["descriptorMethod"];
+  params.matcherType = params_json["matcherType"];
+  params.descriptorType = params_json["descriptorType"];
+  params.selectorType = params_json["selectorType"];
+
+  /* params.filterRes = params_json["filterRes"];
+  params.minPoint =
+      Eigen::Vector4f(params_json["minPoint"][0], params_json["minPoint"][1],
+                      params_json["minPoint"][2], 1);
+  params.maxPoint =
+      Eigen::Vector4f(params_json["maxPoint"][0], params_json["maxPoint"][1],
+                      params_json["maxPoint"][2], 1);
+  params.clusterTol = params_json["clusterTol"];
+  params.clusterMinSize = params_json["clusterMinSize"];
+  params.clusterMaxSize = params_json["clusterMaxSize"]; */
+}
+
 /* MAIN PROGRAM */
 int main(int argc, const char *argv[]) {
   /* INIT VARIABLES AND DATA STRUCTURES */
+
+  // Read config
+  readConfig();
 
   // data location
   string dataPath = "../";
 
   // camera
   string imgBasePath = dataPath + "images/";
-  string imgPrefix =
-      "KITTI/2011_09_26/image_02/data/000000";  // left camera, color
+  // left camera, color
+  string imgPrefix = "KITTI/2011_09_26/image_02/data/000000";
   string imgFileType = ".png";
   int imgStartIndex = 0;  // first file index to load (assumes Lidar and camera
                           // names have identical naming convention)
   int imgEndIndex = 18;   // last file index to load
   int imgStepWidth = 1;
-  int imgFillWidth =
-      4;  // no. of digits which make up the file index (e.g. img-0001.png)
+  // no. of digits which make up the file index (e.g. img-0001.png)
+  int imgFillWidth = 4;
 
   // object detection
   string yoloBasePath = dataPath + "dat/yolo/";
@@ -51,16 +93,13 @@ int main(int argc, const char *argv[]) {
   string lidarPrefix = "KITTI/2011_09_26/velodyne_points/data/000000";
   string lidarFileType = ".bin";
 
-  // calibration data for camera and lidar
-  cv::Mat P_rect_00(
-      3, 4,
-      cv::DataType<double>::type);  // 3x4 projection matrix after rectification
-  cv::Mat R_rect_00(4, 4,
-                    cv::DataType<double>::type);  // 3x3 rectifying rotation to
-                                                  // make image planes co-planar
-  cv::Mat RT(
-      4, 4,
-      cv::DataType<double>::type);  // rotation matrix and translation vector
+  /* calibration data for camera and lidar */
+  // 3x4 projection matrix after rectification
+  cv::Mat P_rect_00(3, 4, cv::DataType<double>::type);
+  // 3x3 rectifying rotation to make image planes co-planar
+  cv::Mat R_rect_00(4, 4, cv::DataType<double>::type);
+  // rotation matrix and translation vector
+  cv::Mat RT(4, 4, cv::DataType<double>::type);
 
   RT.at<double>(0, 0) = 7.533745e-03;
   RT.at<double>(0, 1) = -9.999714e-01;
@@ -109,14 +148,15 @@ int main(int argc, const char *argv[]) {
   P_rect_00.at<double>(2, 2) = 1.000000e+00;
   P_rect_00.at<double>(2, 3) = 0.000000e+00;
 
-  // misc
-  double sensorFrameRate =
-      10.0 / imgStepWidth;       // frames per second for Lidar and camera
-  int dataBufferSize = 2;        // no. of images which are held in memory (ring
-                                 // buffer) at the same time
-  vector<DataFrame> dataBuffer;  // list of data frames which are held in memory
-                                 // at the same time
-  bool bVis = false;             // visualize results
+  /* misc */
+  // frames per second for Lidar and camera
+  double sensorFrameRate = 10.0 / imgStepWidth;
+  // no. of images which are held in memory (ring buffer) at the same time
+  int dataBufferSize = 2;
+  // list of data frames which are held in memory at the same time
+  vector<DataFrame> dataBuffer;
+  // visualize results
+  bool bVis = false;
 
   /* MAIN LOOP OVER ALL IMAGES */
 
@@ -160,8 +200,9 @@ int main(int argc, const char *argv[]) {
     loadLidarFromFile(lidarPoints, lidarFullFilename);
 
     // remove Lidar points based on distance properties
+    // focus on ego lane
     float minZ = -1.5, maxZ = -0.9, minX = 2.0, maxX = 20.0, maxY = 2.0,
-          minR = 0.1;  // focus on ego lane
+          minR = 0.1;
     cropLidarPoints(lidarPoints, minX, maxX, maxY, minZ, maxZ, minR);
 
     (dataBuffer.end() - 1)->lidarPoints = lidarPoints;
@@ -171,9 +212,9 @@ int main(int argc, const char *argv[]) {
     /* CLUSTER LIDAR POINT CLOUD */
 
     // associate Lidar points with camera-based ROI
-    float shrinkFactor =
-        0.10;  // shrinks each bounding box by the given percentage to avoid 3D
-               // object merging at the edges of an ROI
+    // shrinks each bounding box by the given percentage to avoid 3D object
+    // merging at the edges of an ROI
+    float shrinkFactor = 0.10;
     clusterLidarWithROI((dataBuffer.end() - 1)->boundingBoxes,
                         (dataBuffer.end() - 1)->lidarPoints, shrinkFactor,
                         P_rect_00, R_rect_00, RT);
@@ -189,8 +230,8 @@ int main(int argc, const char *argv[]) {
     cout << "#4 : CLUSTER LIDAR POINT CLOUD done" << endl;
 
     // REMOVE THIS LINE BEFORE PROCEEDING WITH THE FINAL PROJECT
-    continue;  // skips directly to the next image without processing what comes
-               // beneath
+    // skips directly to the next image without processing what comes beneath
+    continue;
 
     /* DETECT IMAGE KEYPOINTS */
 
@@ -199,9 +240,9 @@ int main(int argc, const char *argv[]) {
     cv::cvtColor((dataBuffer.end() - 1)->cameraImg, imgGray,
                  cv::COLOR_BGR2GRAY);
 
-    // extract 2D keypoints from current image
-    vector<cv::KeyPoint>
-        keypoints;  // create empty feature list for current image
+    /* extract 2D keypoints from current image */
+    // create empty feature list for current image
+    vector<cv::KeyPoint> keypoints;
     string detectorType = "SHITOMASI";
 
     if (detectorType.compare("SHITOMASI") == 0) {
@@ -215,9 +256,9 @@ int main(int argc, const char *argv[]) {
     if (bLimitKpts) {
       int maxKeypoints = 50;
 
-      if (detectorType.compare("SHITOMASI") ==
-          0) {  // there is no response info, so keep the first 50 as they are
-                // sorted in descending quality order
+      if (detectorType.compare("SHITOMASI") == 0) {
+        // there is no response info, so keep the first 50 as they are sorted in
+        // descending quality order
         keypoints.erase(keypoints.begin() + maxKeypoints, keypoints.end());
       }
       cv::KeyPointsFilter::retainBest(keypoints, maxKeypoints);
@@ -242,9 +283,8 @@ int main(int argc, const char *argv[]) {
 
     cout << "#6 : EXTRACT DESCRIPTORS done" << endl;
 
-    if (dataBuffer.size() >
-        1)  // wait until at least two images have been processed
-    {
+    // wait until at least two images have been processed
+    if (dataBuffer.size() > 1) {
       /* MATCH KEYPOINT DESCRIPTORS */
 
       vector<cv::DMatch> matches;
@@ -267,12 +307,12 @@ int main(int argc, const char *argv[]) {
 
       //// STUDENT ASSIGNMENT
       //// TASK FP.1 -> match list of 3D objects (vector<BoundingBox>) between
-      ///current and previous frame (implement ->matchBoundingBoxes)
+      /// current and previous frame (implement ->matchBoundingBoxes)
       map<int, int> bbBestMatches;
+      // associate bounding boxes between current and previous frame using
+      // keypoint matches
       matchBoundingBoxes(matches, bbBestMatches, *(dataBuffer.end() - 2),
-                         *(dataBuffer.end() -
-                           1));  // associate bounding boxes between current and
-                                 // previous frame using keypoint matches
+                         *(dataBuffer.end() - 1));
       //// EOF STUDENT ASSIGNMENT
 
       // store matches in current data frame
@@ -289,27 +329,23 @@ int main(int argc, const char *argv[]) {
         BoundingBox *prevBB, *currBB;
         for (auto it2 = (dataBuffer.end() - 1)->boundingBoxes.begin();
              it2 != (dataBuffer.end() - 1)->boundingBoxes.end(); ++it2) {
-          if (it1->second == it2->boxID)  // check wether current match partner
-                                          // corresponds to this BB
-          {
+          // check wether current match partner corresponds to this BB
+          if (it1->second == it2->boxID) {
             currBB = &(*it2);
           }
         }
 
         for (auto it2 = (dataBuffer.end() - 2)->boundingBoxes.begin();
              it2 != (dataBuffer.end() - 2)->boundingBoxes.end(); ++it2) {
-          if (it1->first == it2->boxID)  // check wether current match partner
-                                         // corresponds to this BB
-          {
+          // check wether current match partner corresponds to this BB
+          if (it1->first == it2->boxID) {
             prevBB = &(*it2);
           }
         }
 
-        // compute TTC for current match
-        if (currBB->lidarPoints.size() > 0 &&
-            prevBB->lidarPoints.size() >
-                0)  // only compute TTC if we have Lidar points
-        {
+        /* compute TTC for current match */
+        // only compute TTC if we have Lidar points
+        if (currBB->lidarPoints.size() > 0 && prevBB->lidarPoints.size() > 0) {
           //// STUDENT ASSIGNMENT
           //// TASK FP.2 -> compute time-to-collision based on Lidar data
           ///(implement -> computeTTCLidar)
@@ -321,7 +357,7 @@ int main(int argc, const char *argv[]) {
           //// STUDENT ASSIGNMENT
           //// TASK FP.3 -> assign enclosed keypoint matches to bounding box
           ///(implement -> clusterKptMatchesWithROI) / TASK FP.4 -> compute
-          ///time-to-collision based on camera (implement -> computeTTCCamera)
+          /// time-to-collision based on camera (implement -> computeTTCCamera)
           double ttcCamera;
           clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints,
                                    (dataBuffer.end() - 1)->keypoints,

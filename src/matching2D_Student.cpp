@@ -23,13 +23,12 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource,
   }
 
   // perform matching task
-  if (selectorType.compare("SEL_NN") == 0) {  // nearest neighbor (best match)
-
-    matcher->match(
-        descSource, descRef,
-        matches);  // Finds the best match for each descriptor in desc1
-  } else if (selectorType.compare("SEL_KNN") ==
-             0) {  // k nearest neighbors (k=2)
+  if (selectorType.compare("SEL_NN") == 0) {
+    // nearest neighbor (best match)
+    // Finds the best match for each descriptor in desc1
+    matcher->match(descSource, descRef, matches);
+  } else if (selectorType.compare("SEL_KNN") == 0) {
+    // k nearest neighbors (k=2)
 
     // ...
   }
@@ -42,10 +41,13 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img,
   // select appropriate descriptor
   cv::Ptr<cv::DescriptorExtractor> extractor;
   if (descriptorType.compare("BRISK") == 0) {
-    int threshold = 30;         // FAST/AGAST detection threshold score.
-    int octaves = 3;            // detection octaves (use 0 to do single scale)
-    float patternScale = 1.0f;  // apply this scale to the pattern used for
-                                // sampling the neighbourhood of a keypoint.
+    // FAST/AGAST detection threshold score.
+    int threshold = 30;
+    // detection octaves (use 0 to do single scale)
+    int octaves = 3;
+    // apply this scale to the pattern used for sampling the neighbourhood of a
+    // keypoint.
+    float patternScale = 1.0f;
 
     extractor = cv::BRISK::create(threshold, octaves, patternScale);
   } else {
@@ -63,16 +65,18 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img,
 // Detect keypoints in image using the traditional Shi-Thomasi detector
 void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img,
                            bool bVis) {
-  // compute detector parameters based on image size
-  int blockSize = 4;  //  size of an average block for computing a derivative
-                      //  covariation matrix over each pixel neighborhood
-  double maxOverlap =
-      0.0;  // max. permissible overlap between two features in %
+  /* compute detector parameters based on image size */
+  //  size of an average block for computing a derivative covariation matrix
+  //  over each pixel neighborhood
+  int blockSize = 4;
+  // max. permissible overlap between two features in %
+  double maxOverlap = 0.0;
   double minDistance = (1.0 - maxOverlap) * blockSize;
-  int maxCorners =
-      img.rows * img.cols / max(1.0, minDistance);  // max. num. of keypoints
+  // max. num. of keypoints
+  int maxCorners = img.rows * img.cols / max(1.0, minDistance);
 
-  double qualityLevel = 0.01;  // minimal accepted quality of image corners
+  // minimal accepted quality of image corners
+  double qualityLevel = 0.01;
   double k = 0.04;
 
   // Apply corner detection
