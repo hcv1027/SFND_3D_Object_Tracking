@@ -28,9 +28,27 @@
         "SEL_NN",
         "SEL_KNN"
     ],
-    "detectorType": "HARRIS",
-    "descriptorMethod": "BRISK",
+    "_yoloInputSizeOption": [
+        320,
+        416,
+        608
+    ],
+    "showTopView": false,
+    "showDebugImg": true,
+    "showMatch": false,
+    "limitKpts": false,
+    "maxKeypoints": 100,
+    "imgStartIndex": 0,
+    "imgEndIndex": 30,
+    "imgStepWidth": 1,
+    "detectorType": "FAST",
+    "descriptorMethod": "BRIEF",
     "matcherType": "MAT_BF",
     "descriptorType": "DES_BINARY",
-    "selectorType": "SEL_KNN"
+    "selectorType": "SEL_KNN",
+    "confThreshold": 0.2,
+    "nmsThreshold": 0.4,
+    "shrinkFactor": 0.1,
+    "yoloInputSize": 416,
+    "ttc_lidar_outlier_threshold": 0.05
 }

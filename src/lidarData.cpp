@@ -13,10 +13,10 @@ void cropLidarPoints(std::vector<LidarPoint> &lidarPoints, float minX,
                      float minR) {
   std::vector<LidarPoint> newLidarPts;
   for (auto it = lidarPoints.begin(); it != lidarPoints.end(); ++it) {
+    // Check if Lidar point is outside of boundaries
     if ((*it).x >= minX && (*it).x <= maxX && (*it).z >= minZ &&
         (*it).z <= maxZ && (*it).z <= 0.0 && abs((*it).y) <= maxY &&
-        (*it).r >= minR)  // Check if Lidar point is outside of boundaries
-    {
+        (*it).r >= minR) {
       newLidarPts.push_back(*it);
     }
   }
@@ -63,9 +63,10 @@ void showLidarTopview(std::vector<LidarPoint> &lidarPoints, cv::Size worldSize,
 
   // plot Lidar points into image
   for (auto it = lidarPoints.begin(); it != lidarPoints.end(); ++it) {
-    float xw =
-        (*it).x;  // world position in m with x facing forward from sensor
-    float yw = (*it).y;  // world position in m with y facing left from sensor
+    // world position in m with x facing forward from sensor
+    float xw = (*it).x;
+    // world position in m with y facing left from sensor
+    float yw = (*it).y;
 
     int y = (-xw * imageSize.height / worldSize.height) + imageSize.height;
     int x = (-yw * imageSize.height / worldSize.height) + imageSize.width / 2;

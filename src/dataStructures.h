@@ -27,21 +27,20 @@ struct BoundingBox {  // bounding box around a classified object (contains both
   std::vector<cv::DMatch> kptMatches;   // keypoint matches enclosed by 2D roi
 };
 
-struct DataFrame {  // represents the available sensor information at the same
-                    // time instance
-
+// represents the available sensor information at the same time instance
+struct DataFrame {
   cv::Mat cameraImg;  // camera image
 
   std::vector<cv::KeyPoint> keypoints;  // 2D keypoints within camera image
   cv::Mat descriptors;                  // keypoint descriptors
-  std::vector<cv::DMatch>
-      kptMatches;  // keypoint matches between previous and current frame
+  // keypoint matches between previous and current frame
+  std::vector<cv::DMatch> kptMatches;
   std::vector<LidarPoint> lidarPoints;
 
-  std::vector<BoundingBox>
-      boundingBoxes;  // ROI around detected objects in 2D image coordinates
-  std::map<int, int>
-      bbMatches;  // bounding box matches between previous and current frame
+  // ROI around detected objects in 2D image coordinates
+  std::vector<BoundingBox> boundingBoxes;
+  // bounding box matches between previous and current frame
+  std::map<int, int> bbMatches;
 };
 
 #endif /* dataStructures_h */

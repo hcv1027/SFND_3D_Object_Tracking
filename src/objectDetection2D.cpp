@@ -18,12 +18,14 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes,
                    float confThreshold, float nmsThreshold,
                    std::string basePath, std::string classesFile,
                    std::string modelConfiguration, std::string modelWeights,
-                   bool bVis) {
+                   int inputSize, bool bVis) {
   // load class names from file
   vector<string> classes;
   ifstream ifs(classesFile.c_str());
   string line;
-  while (getline(ifs, line)) classes.push_back(line);
+  while (getline(ifs, line)) {
+    classes.push_back(line);
+  }
 
   // load neural network
   cv::dnn::Net net =
@@ -35,7 +37,7 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes,
   cv::Mat blob;
   vector<cv::Mat> netOutput;
   double scalefactor = 1 / 255.0;
-  cv::Size size = cv::Size(416, 416);
+  cv::Size size = cv::Size(inputSize, inputSize);
   cv::Scalar mean = cv::Scalar(0, 0, 0);
   bool swapRB = false;
   bool crop = false;
@@ -43,16 +45,16 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes,
 
   // Get names of output layers
   vector<cv::String> names;
-  vector<int> outLayers =
-      net.getUnconnectedOutLayers();  // get  indices of  output layers, i.e.
-                                      // layers with unconnected outputs
-  vector<cv::String> layersNames =
-      net.getLayerNames();  // get  names of all layers in the network
+  // get indices of output layers, i.e. layers with unconnected outputs
+  vector<int> outLayers = net.getUnconnectedOutLayers();
+  // get names of all layers in the network
+  vector<cv::String> layersNames = net.getLayerNames();
 
   names.resize(outLayers.size());
-  for (size_t i = 0; i < outLayers.size();
-       ++i)  // Get the names of the output layers in names
+  for (size_t i = 0; i < outLayers.size(); ++i) {
+    // Get the names of the output layers in names
     names[i] = layersNames[outLayers[i] - 1];
+  }
 
   // invoke forward propagation through network
   net.setInput(blob);
@@ -96,9 +98,8 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes,
     bBox.roi = boxes[*it];
     bBox.classID = classIds[*it];
     bBox.confidence = confidences[*it];
-    bBox.boxID =
-        (int)bBoxes
-            .size();  // zero-based unique identifier for this bounding box
+    // zero-based unique identifier for this bounding box
+    bBox.boxID = (int)bBoxes.size();
 
     bBoxes.push_back(bBox);
   }
