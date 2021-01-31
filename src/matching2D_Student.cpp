@@ -9,16 +9,15 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource,
                       std::vector<cv::KeyPoint> &kPtsRef, cv::Mat &descSource,
                       cv::Mat &descRef, std::vector<cv::DMatch> &matches,
                       std::string descriptorType, std::string matcherType,
-                      std::string selectorType) {
+                      std::string selectorType, bool cross_check) {
   // configure matcher
-  bool crossCheck = false;
   cv::Ptr<cv::DescriptorMatcher> matcher;
 
   if (matcherType.compare("MAT_BF") == 0) {
     int normType = descriptorType.compare("DES_BINARY") == 0 ? cv::NORM_HAMMING
                                                              : cv::NORM_L2;
-    matcher = cv::BFMatcher::create(normType, crossCheck);
-    cout << "BF matching cross-check=" << crossCheck;
+    matcher = cv::BFMatcher::create(normType, cross_check);
+    cout << "BF matching cross-check=" << cross_check;
   } else if (matcherType.compare("MAT_FLANN") == 0) {
     if (descSource.type() != CV_32F) {
       // OpenCV bug workaround : convert binary descriptors to floating point

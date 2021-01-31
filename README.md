@@ -1,3 +1,11 @@
+[box_matching]: ./images/0003_boxmatch.png "box_matching"
+[ttc_lidar_01]: ./images/ttc_lidar_01.png "ttc_lidar_01"
+[ttc_lidar_02]: ./images/ttc_lidar_02.png "ttc_lidar_02"
+[kpt_box]: ./images/kpt_box.png "kpt_box"
+[ttc-camera_formula_01]: ./images/ttc-camera_formula_01.png "ttc-camera_formula_01"
+[ttc-camera_formula_02]: ./images/ttc-camera_formula_02.png "ttc-camera_formula_02"
+
+
 # SFND 3D Object Tracking
 
 Welcome to the final project of the camera course. By completing all the lessons, you now have a solid understanding of keypoint detectors, descriptors, and methods to match them between successive images. Also, you know how to detect objects in an image using the YOLO deep-learning framework. And finally, you know how to associate regions in a camera image with Lidar points in 3D space. Let's take a look at our program schematic to see what we already have accomplished and what's still missing.
@@ -33,3 +41,35 @@ In this final project, you will implement the missing parts in the schematic. To
 2. Make a build directory in the top level project directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./3D_object_tracking`.
+
+---
+
+## [Rubric](https://review.udacity.com/#!/rubrics/2550/view) Points
+
+### FP.1 Match 3D Objects
+Below image is the screenshot of box matching result. Box can be matched correctly from previous frame to current frame.
+
+![box_matching]
+
+### FP.2 Compute Lidar-based TTC
+Below image shows the ttc-lidar result. This is a normal case, there is no outlier lidar points in top-view image, so the ttc-lidar value is same with ttc-lidar without outlier.
+
+![ttc_lidar_01]
+
+There is an outlier lidar point, it shows in top-view image. You can see that the result of ttc-lidar value is havily effected by this outlier (`ttc_lidar = 3.83 s`), but the result of ttc-lidar without outlier is still stady (`ttc_lidar_without_outlier = 14.98 s`).
+
+![ttc_lidar_02]
+
+### FP.3 Associate Keypoint Correspondences with Bounding Boxes
+
+I use `cv::findHomography` to filter out the outlier keypoint matches. Below image shows the result of keypoint matches which are in the relative bounding box. Blue lines are inlier matches (I just show top 10 best matches in this image). Green lines are outliers which will not be used to compute ttc-camere in next step. You can see that the outlier matches are successfully removed from the current bounding box (A keypoint on the tree in previous frame is mis-matched with the forward car in current frame).
+
+![kpt_box]
+
+### FP.4 Compute Camera-based TTC
+
+According the formula introduced in the Udacity course, I implement the function to calculate ttc-lidar by the keypoints found in previous step (Only using the inlier keypoint matches).
+
+![ttc-camera_formula_01]
+
+![ttc-camera_formula_02]

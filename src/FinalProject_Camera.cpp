@@ -1,5 +1,6 @@
 
 /* INCLUDES FOR THIS PROJECT */
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -25,7 +26,9 @@ using namespace std;
 
 struct Params {
   bool showTopView;
-  bool showDebugImg;
+  bool showMatchBox;
+  bool showTTCLidar;
+  bool showTTCCamera;
   bool showMatch;
   bool limitKpts;
   int maxKeypoints;
@@ -37,6 +40,7 @@ struct Params {
   string matcherType;
   string descriptorType;
   string selectorType;
+  bool cross_check;
   float confThreshold;
   float nmsThreshold;
   float shrinkFactor;
@@ -58,7 +62,9 @@ void readConfig() {
   json_stream.close();
 
   params.showTopView = params_json["showTopView"];
-  params.showDebugImg = params_json["showDebugImg"];
+  params.showMatchBox = params_json["showMatchBox"];
+  params.showTTCLidar = params_json["showTTCLidar"];
+  params.showTTCCamera = params_json["showTTCCamera"];
   params.showMatch = params_json["showMatch"];
   params.limitKpts = params_json["limitKpts"];
   params.maxKeypoints = params_json["maxKeypoints"];
@@ -70,6 +76,7 @@ void readConfig() {
   params.matcherType = params_json["matcherType"];
   params.descriptorType = params_json["descriptorType"];
   params.selectorType = params_json["selectorType"];
+  params.cross_check = params_json["cross_check"];
   params.confThreshold = params_json["confThreshold"];
   params.nmsThreshold = params_json["nmsThreshold"];
   params.shrinkFactor = params_json["shrinkFactor"];
@@ -255,7 +262,7 @@ int main(int argc, const char *argv[]) {
     bVis = params.showTopView;
     if (bVis) {
       show3DObjects(dataBuffer.rbegin()->boundingBoxes, cv::Size(4.0, 20.0),
-                    cv::Size(1200, 1200), imgNumber.str(), true);
+                    cv::Size(1200, 1200), imgNumber.str(), false);
     }
     bVis = false;
 
@@ -333,7 +340,7 @@ int main(int argc, const char *argv[]) {
           next(dataBuffer.rbegin())->keypoints, dataBuffer.rbegin()->keypoints,
           next(dataBuffer.rbegin())->descriptors,
           dataBuffer.rbegin()->descriptors, matches, params.descriptorType,
-          params.matcherType, params.selectorType);
+          params.matcherType, params.selectorType, params.cross_check);
 
       // store matches in current data frame
       dataBuffer.rbegin()->kptMatches = matches;
@@ -352,7 +359,7 @@ int main(int argc, const char *argv[]) {
                          *dataBuffer.rbegin());
       //// EOF STUDENT ASSIGNMENT
 
-      if (params.showDebugImg) {
+      if (params.showMatchBox) {
         DataFrame &prev_frame = *next(dataBuffer.rbegin());
         DataFrame &curr_frame = *dataBuffer.rbegin();
 
@@ -388,6 +395,11 @@ int main(int argc, const char *argv[]) {
           p1.y = prev_boxes[box_pair.first].roi.y +
                  prev_boxes[box_pair.first].roi.height / 2;
           cv::Point2f p2;
+          /* p2.x = curr_boxes[box_pair.second].roi.x +
+                 curr_boxes[box_pair.second].roi.width / 2 +
+                 curr_frame.cameraImg.cols;
+          p2.y = curr_boxes[box_pair.second].roi.y +
+                 curr_boxes[box_pair.second].roi.height / 2; */
           p2.x = curr_boxes[box_pair.second].roi.x +
                  curr_boxes[box_pair.second].roi.width / 2;
           p2.y = curr_boxes[box_pair.second].roi.y +
@@ -400,10 +412,18 @@ int main(int argc, const char *argv[]) {
                         colors_list[idx], 2);
           // Draw curr box
           cv::Point2f top_left;
+          /* top_left.x =
+              curr_boxes[box_pair.second].roi.x + curr_frame.cameraImg.cols;
+          top_left.y = curr_boxes[box_pair.second].roi.y; */
           top_left.x = curr_boxes[box_pair.second].roi.x;
           top_left.y =
               curr_boxes[box_pair.second].roi.y + curr_frame.cameraImg.rows;
           cv::Point2f bottom_right;
+          /* bottom_right.x = curr_boxes[box_pair.second].roi.x +
+                           curr_boxes[box_pair.second].roi.width +
+                           curr_frame.cameraImg.cols;
+          bottom_right.y = curr_boxes[box_pair.second].roi.y +
+                           curr_boxes[box_pair.second].roi.height; */
           bottom_right.x = curr_boxes[box_pair.second].roi.x +
                            curr_boxes[box_pair.second].roi.width;
           bottom_right.y = curr_boxes[box_pair.second].roi.y +
@@ -415,7 +435,7 @@ int main(int argc, const char *argv[]) {
           idx = (++idx) % colors_list.size();
         }
 
-        // Draw match
+        // Draw match line
         if (params.showMatch) {
           cv::RNG rng;
           for (int i = 0; i < matches.size(); i++) {
@@ -427,17 +447,32 @@ int main(int argc, const char *argv[]) {
             int curr_idx = match.trainIdx;
             cv::Point2f prev_point = prev_frame.keypoints[prev_idx].pt;
             cv::Point2f curr_point = curr_frame.keypoints[curr_idx].pt;
+            // curr_point.x += curr_frame.cameraImg.cols;
             curr_point.y += curr_frame.cameraImg.rows;
             cv::line(concate_img, prev_point, curr_point, color, 2);
             // cv::circle(img, Point(330, 90), 50, Scalar(0, 255, 0), -1);
           }
         }
 
+        cv::Point text_pos;
+        text_pos.x = 20;
+        text_pos.y = 50;
+        // curr_frame.cameraImg.cols
+        cv::putText(concate_img, "Prev frame", text_pos,
+                    cv::FONT_HERSHEY_COMPLEX, 2, cv::Scalar(255, 0, 0), 2, 8,
+                    0);
+        text_pos.y = 50 + curr_frame.cameraImg.rows;
+        cv::putText(concate_img, "Curr frame", text_pos,
+                    cv::FONT_HERSHEY_COMPLEX, 2, cv::Scalar(255, 0, 0), 2, 8,
+                    0);
+
         string windowName =
             "Matching keypoints between two camera images (best 10)";
         cv::namedWindow(windowName, 7);
-        cv::imshow(windowName, concate_img);
-        cv::waitKey(0);
+        // cv::imshow(windowName, concate_img);
+        // cv::waitKey(0);
+        cv::imwrite("../output/" + imgNumber.str() + "_boxmatch.png",
+                    concate_img);
       }
       // continue;
 
@@ -484,19 +519,85 @@ int main(int argc, const char *argv[]) {
                           params.ttc_lidar_outlier_threshold);
           cout << "ttcLidar: " << ttcLidar << endl;
           cout << "ttc_lidar_filtered: " << ttc_lidar_filtered << endl;
+          if (params.showTTCLidar) {
+            /* code */
+          }
+
           //// EOF STUDENT ASSIGNMENT
 
           //// STUDENT ASSIGNMENT
           //// TASK FP.3 -> assign enclosed keypoint matches to bounding box
           ///(implement -> clusterKptMatchesWithROI) / TASK FP.4 -> compute
           /// time-to-collision based on camera (implement -> computeTTCCamera)
+          std::vector<cv::DMatch> outlierMatches;
           double ttcCamera;
           clusterKptMatchesWithROI(
               *currBB, next(dataBuffer.rbegin())->keypoints,
-              dataBuffer.rbegin()->keypoints, dataBuffer.rbegin()->kptMatches);
+              dataBuffer.rbegin()->keypoints, dataBuffer.rbegin()->kptMatches,
+              outlierMatches);
           computeTTCCamera(next(dataBuffer.rbegin())->keypoints,
                            dataBuffer.rbegin()->keypoints, currBB->kptMatches,
                            sensorFrameRate, ttcCamera);
+
+          if (true) {
+            DataFrame &prev_frame = *next(dataBuffer.rbegin());
+            DataFrame &curr_frame = *dataBuffer.rbegin();
+
+            // Draw box
+            cv::Mat img_array[] = {prev_frame.cameraImg, curr_frame.cameraImg};
+            cv::Mat concate_img;
+            cv::hconcat(img_array, 2, concate_img);
+
+            // Draw prev box
+            cv::rectangle(concate_img, prevBB->roi, cv::Scalar(0, 0, 255), 2);
+            // Draw curr box
+            cv::Point2f top_left;
+            top_left.x = currBB->roi.x + curr_frame.cameraImg.cols;
+            top_left.y = currBB->roi.y;
+            cv::Point2f bottom_right;
+            bottom_right.x =
+                currBB->roi.x + currBB->roi.width + curr_frame.cameraImg.cols;
+            bottom_right.y = currBB->roi.y + currBB->roi.height;
+            cv::rectangle(concate_img, top_left, bottom_right,
+                          cv::Scalar(0, 0, 255), 2);
+
+            // Draw inlier match line
+            std::vector<cv::DMatch> inlierMatches = currBB->kptMatches;
+            sort(inlierMatches.begin(), inlierMatches.end(),
+                 [](const cv::DMatch &m1, const cv::DMatch &m2) {
+                   return m1.distance < m2.distance;
+                 });
+            for (int i = 0; i < 10; i++) {
+              cv::DMatch &match = inlierMatches[i];
+              int prev_idx = match.queryIdx;
+              int curr_idx = match.trainIdx;
+              cv::Point2f prev_point = prev_frame.keypoints[prev_idx].pt;
+              cv::Point2f curr_point = curr_frame.keypoints[curr_idx].pt;
+              curr_point.x += curr_frame.cameraImg.cols;
+              cv::line(concate_img, prev_point, curr_point,
+                       cv::Scalar(255, 0, 0), 2);
+            }
+
+            // Draw outlier match line
+            for (int i = 0; i < outlierMatches.size(); i++) {
+              cv::DMatch &match = outlierMatches[i];
+              int prev_idx = match.queryIdx;
+              int curr_idx = match.trainIdx;
+              cv::Point2f prev_point = prev_frame.keypoints[prev_idx].pt;
+              cv::Point2f curr_point = curr_frame.keypoints[curr_idx].pt;
+              curr_point.x += curr_frame.cameraImg.cols;
+              cv::line(concate_img, prev_point, curr_point,
+                       cv::Scalar(0, 255, 0), 2);
+            }
+
+            string windowName =
+                "Matching keypoints between two camera images (best 10)";
+            cv::namedWindow(windowName, 7);
+            // cv::imshow(windowName, concate_img);
+            // cv::waitKey(0);
+            cv::imwrite("../output/" + imgNumber.str() + "_kpt_box.png",
+                        concate_img);
+          }
           //// EOF STUDENT ASSIGNMENT
 
           bVis = true;
@@ -510,16 +611,22 @@ int main(int argc, const char *argv[]) {
                           cv::Scalar(0, 255, 0), 2);
 
             char str[200];
-            sprintf(str, "TTC Lidar : %f s, TTC Camera : %f s", ttcLidar,
-                    ttcCamera);
-            putText(visImg, str, cv::Point2f(80, 50), cv::FONT_HERSHEY_PLAIN, 2,
-                    cv::Scalar(0, 0, 255));
+            /* sprintf(str, "TTC Lidar : %f s, TTC Camera : %f s", ttcLidar,
+                    ttcCamera); */
+            sprintf(str, "TTC Lidar : %f s", ttcLidar);
+            putText(visImg, str, cv::Point2f(80, 50), cv::FONT_HERSHEY_PLAIN, 3,
+                    cv::Scalar(255, 0, 255));
+            sprintf(str, "No outlier TTC Lidar : %f s", ttc_lidar_filtered);
+            putText(visImg, str, cv::Point2f(80, 100), cv::FONT_HERSHEY_PLAIN,
+                    3, cv::Scalar(255, 0, 255));
 
             string windowName = "Final Results : TTC";
             cv::namedWindow(windowName, 4);
             cv::imshow(windowName, visImg);
             cout << "Press key to continue to next frame" << endl;
             cv::waitKey(0);
+            cv::imwrite("../output/" + imgNumber.str() + "_ttc_lidar.png",
+                        visImg);
           }
           bVis = false;
 

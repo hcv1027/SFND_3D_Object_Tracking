@@ -1,11 +1,10 @@
-
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <numeric>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
 #include "camFusion.hpp"
 #include "dataStructures.h"
 
@@ -153,12 +152,75 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize,
   }
 }
 
+/* bool PatternDetector::refineMatchesWithHomography(
+    const vector<cv::KeyPoint> &queryKeypoints,
+    const vector<cv::KeyPoint> &trainKeypoints, float reprojectionThreshold,
+    vector<cv::DMatch> &matches, cv::Mat &homography) {
+  const int minNumberMatchesAllowed = 8;
+  if (matches.size() < minNumberMatchesAllowed) {
+    return false;
+  }
+
+  // Prepare data for cv::findHomography
+  vector<cv::Point2f> srcPoints(matches.size());
+  vector<cv::Point2f> dstPoints(matches.size());
+  for (size_t i = 0; i < matches.size(); i++) {
+    srcPoints[i] = trainKeypoints[matches[i].trainIdx].pt;
+    dstPoints[i] = queryKeypoints[matches[i].queryIdx].pt;
+  }
+
+  // Find homography matrix and get inliers mask
+  vector<unsigned char> inliersMask(srcPoints.size());
+  homography = cv::findHomography(srcPoints, dstPoints, CV_FM_RANSAC,
+                                  reprojectionThreshold, inliersMask);
+  vector<cv::DMatch> inliers;
+  for (size_t i = 0; i < inliersMask.size(); i++) {
+    if (inliersMask[i]) {
+      inliers.push_back(matches[i]);
+    }
+  }
+  matches.swap(inliers);
+  return matches.size() > minNumberMatchesAllowed;
+} */
+
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox,
                               std::vector<cv::KeyPoint> &kptsPrev,
                               std::vector<cv::KeyPoint> &kptsCurr,
-                              std::vector<cv::DMatch> &kptMatches) {
-  // ...
+                              std::vector<cv::DMatch> &kptMatches,
+                              std::vector<cv::DMatch> &outlierMatches) {
+  vector<cv::DMatch> box_matches;
+  // Step 1: Add match whose keypoint in current frame is in boundint box
+  for (int i = 0; i < kptMatches.size(); i++) {
+    cv::DMatch &match = kptMatches[i];
+    cv::Point2f &prev_point = kptsPrev[match.queryIdx].pt;
+    cv::Point2f &curr_point = kptsCurr[match.trainIdx].pt;
+    if (boundingBox.roi.contains(curr_point)) {
+      box_matches.push_back(match);
+    }
+  }
+
+  // Step 2: Computing homography matrix to eliminate the outlier matches.
+  vector<cv::Point2f> srcPoints(box_matches.size());
+  vector<cv::Point2f> dstPoints(box_matches.size());
+  for (size_t i = 0; i < box_matches.size(); i++) {
+    srcPoints[i] = kptsPrev[box_matches[i].queryIdx].pt;
+    dstPoints[i] = kptsCurr[box_matches[i].trainIdx].pt;
+  }
+
+  // Find homography matrix and get inliers mask
+  vector<unsigned char> inliersMask(box_matches.size());
+  double ransacReprojThreshold = 5;
+  cv::Mat homography = cv::findHomography(srcPoints, dstPoints, cv::RANSAC,
+                                          ransacReprojThreshold, inliersMask);
+  // vector<cv::DMatch> box_matches_inliers;
+  for (size_t i = 0; i < inliersMask.size(); i++) {
+    if (inliersMask[i]) {
+      boundingBox.kptMatches.emplace_back(box_matches[i]);
+    } else {
+      outlierMatches.emplace_back(box_matches[i]);
+    }
+  }
 }
 
 // Compute time-to-collision (TTC) based on keypoint correspondences in
@@ -167,7 +229,59 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev,
                       std::vector<cv::KeyPoint> &kptsCurr,
                       std::vector<cv::DMatch> kptMatches, double frameRate,
                       double &TTC, cv::Mat *visImg) {
-  // ...
+  // compute distance ratios between all matched keypoints
+  vector<double> distRatios;  // stores the distance ratios for all keypoints
+                              // between curr. and prev. frame
+  // outer kpt. loop
+  for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1) {
+    // get current keypoint and its matched partner in the prev. frame
+    cv::KeyPoint kpOuterCurr = kptsCurr.at(it1->trainIdx);
+    cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
+
+    // inner kpt.-loop
+    for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2) {
+      double minDist = 100.0;  // min. required distance
+
+      // get next keypoint and its matched partner in the prev. frame
+      cv::KeyPoint kpInnerCurr = kptsCurr.at(it2->trainIdx);
+      cv::KeyPoint kpInnerPrev = kptsPrev.at(it2->queryIdx);
+
+      // compute distances and distance ratios
+      double distCurr = cv::norm(kpOuterCurr.pt - kpInnerCurr.pt);
+      double distPrev = cv::norm(kpOuterPrev.pt - kpInnerPrev.pt);
+
+      // avoid division by zero
+      if (distPrev > std::numeric_limits<double>::epsilon() &&
+          distCurr >= minDist) {
+        double distRatio = distCurr / distPrev;
+        distRatios.push_back(distRatio);
+      }
+    }  // eof inner loop over all matched kpts
+  }    // eof outer loop over all matched kpts
+
+  // only continue if list of distance ratios is not empty
+  if (distRatios.size() == 0) {
+    TTC = NAN;
+    return;
+  }
+
+  double medianDistRatio = 0.0;
+  if (distRatios.size() % 2 == 0) {
+    const auto median_it1 = distRatios.begin() + distRatios.size() / 2 - 1;
+    const auto median_it2 = std::next(median_it1);
+
+    std::nth_element(distRatios.begin(), median_it1, distRatios.end());
+    std::nth_element(distRatios.begin(), median_it2, distRatios.end());
+
+    medianDistRatio = (*median_it1 + *median_it2) / 2;
+  } else {
+    const auto median_it = distRatios.begin() + distRatios.size() / 2;
+    std::nth_element(distRatios.begin(), median_it, distRatios.end());
+    medianDistRatio = *median_it;
+  }
+
+  double delta_time = 1.0 / frameRate;
+  TTC = -delta_time / (1 - medianDistRatio);
 }
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
@@ -259,14 +373,4 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches,
       bbBestMatches.insert(make_pair(i, match_box_id));
     }
   }
-
-  /* for (int i = 0; i < prev_boxes.size(); i++) {
-    BoundingBox &prev_box = prev_boxes[i];
-    box_matching_count.push_back(std::vector<int>(curr_boxes.size(), 0));
-    for (int j = 0; j < curr_boxes.size(); j++) {
-      BoundingBox &curr_box = curr_boxes[j];
-    }
-  } */
-
-  // typedef std::pair<>
 }
