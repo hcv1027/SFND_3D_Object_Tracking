@@ -75,7 +75,7 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize,
   // create topview image
   cv::Mat topviewImg(imageSize, CV_8UC3, cv::Scalar(255, 255, 255));
 
-  std::cout << "box size: " << boundingBoxes.size() << std::endl;
+  // std::cout << "box size: " << boundingBoxes.size() << std::endl;
   for (auto it1 = boundingBoxes.begin(); it1 != boundingBoxes.end(); ++it1) {
     // create randomized color for current 3D object
     // std::cout << "boxID: " << it1->boxID << std::endl;
@@ -321,14 +321,16 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
     minXPrev = closest_x_without_outlier(prev_lidar_point);
     minXCurr = closest_x_without_outlier(curr_lidar_point);
-    cout << "filtered minXPrev: " << minXPrev << endl;
-    cout << "filtered minXCurr: " << minXCurr << endl;
+    // cout << "filtered minXPrev: " << minXPrev << endl;
+    // cout << "filtered minXCurr: " << minXCurr << endl;
+    // cout << "filtered diff: " << minXPrev - minXCurr << endl;
   } else {
     minXPrev = prev_lidar_point[0].x;
     minXCurr = curr_lidar_point[0].x;
 
-    cout << "minXPrev: " << minXPrev << endl;
-    cout << "minXCurr: " << minXCurr << endl;
+    // cout << "minXPrev: " << minXPrev << endl;
+    // cout << "minXCurr: " << minXCurr << endl;
+    // cout << "diff: " << minXPrev - minXCurr << endl;
   }
 
   // compute TTC from both measurements

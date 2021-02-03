@@ -4,6 +4,11 @@
 [kpt_box]: ./images/kpt_box.png "kpt_box"
 [ttc-camera_formula_01]: ./images/ttc-camera_formula_01.png "ttc-camera_formula_01"
 [ttc-camera_formula_02]: ./images/ttc-camera_formula_02.png "ttc-camera_formula_02"
+[ttc_lidar_006]: ./images/ttc_lidar_006.png "ttc_lidar_006"
+[ttc_lidar_007]: ./images/ttc_lidar_007.png "ttc_lidar_007"
+[ttc_lidar_008]: ./images/ttc_lidar_008.png "ttc_lidar_008"
+[ttc_camera_compare]: ./images/ttc_camera_compare.png "ttc_camera_compare"
+[ttc_compare]: ./images/ttc_compare.png "ttc_compare"
 
 
 # SFND 3D Object Tracking
@@ -73,3 +78,25 @@ According the formula introduced in the Udacity course, I implement the function
 ![ttc-camera_formula_01]
 
 ![ttc-camera_formula_02]
+
+### FP.5 Performance Evaluation 1
+Since the ttc-lidar value is calculated according to the formula `TTC = minXCurr * delta_time / (minXPrev - minXCurr);`. I think it will be huge affected by the difference between previous and current frame's minimum x. In the below example, the value of `minXPrev - minXCurr` in frame 007 is significiently small, so the ttc-lidar is suddently increase at this time and decrease in next frame.
+
+**Frame 006: `minXPrev - minXCurr = 0.0609999`**
+![ttc_lidar_006]
+
+**Frame 007: `minXPrev - minXCurr = 0.0220003`**
+![ttc_lidar_007]
+
+**Frame 008: `minXPrev - minXCurr = 0.0799999`**
+![ttc_lidar_008]
+
+### FP.6 Performance Evaluation 2
+According to the spreadsheet and line graph, I think the top 2 stable ttc-camera are using *SIFT+SIFT* and *AKAZE+AKAZE* as detector and descriptor. Their result are most close to the ttc-lidar at the same frame, except frame_7 and frame_8. I think the gap are coming from lidar's outlier at that two frame. But considering the conclusion of mid-term project, I will choose *FAST+BRIEF* since it seems only has one ttc-camera result which is way off, and it consumes less time than *SIFT+SIFT* and *AKAZE+AKAZE*. If we can improve our method of filtering the outlier from keypoint match, I think *FAST+BRIEF* can be more stable. So my top 3 choose are:
+1. FAST+BRIEF
+2. AKAZE+AKAZE
+3. SIFT+SIFT
+   
+![ttc_compare]
+
+![ttc_camera_compare]

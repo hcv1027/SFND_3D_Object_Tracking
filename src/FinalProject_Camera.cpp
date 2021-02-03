@@ -84,6 +84,9 @@ void readConfig() {
   params.ttc_lidar_outlier_threshold =
       params_json["ttc_lidar_outlier_threshold"];
 
+  std::cout << "detector: " << params.detectorType << std::endl;
+  std::cout << "descriptor: " << params.descriptorMethod << std::endl;
+
   /* params.filterRes = params_json["filterRes"];
   params.minPoint =
       Eigen::Vector4f(params_json["minPoint"][0], params_json["minPoint"][1],
@@ -195,6 +198,9 @@ int main(int argc, const char *argv[]) {
   // visualize results
   bool bVis = false;
 
+  // std::vector<double> ttc_lidar_result;
+  // std::vector<double> ttc_camera_result;
+
   /* MAIN LOOP OVER ALL IMAGES */
   for (size_t imgIndex = 0; imgIndex <= imgEndIndex - imgStartIndex;
        imgIndex += imgStepWidth) {
@@ -205,6 +211,7 @@ int main(int argc, const char *argv[]) {
     imgNumber << setfill('0') << setw(imgFillWidth) << imgStartIndex + imgIndex;
     string imgFullFilename =
         imgBasePath + imgPrefix + imgNumber.str() + imgFileType;
+    cout << endl << "imgNumber: " << imgNumber.str() << endl;
 
     // load image from file
     cv::Mat img = cv::imread(imgFullFilename);
@@ -262,7 +269,7 @@ int main(int argc, const char *argv[]) {
     bVis = params.showTopView;
     if (bVis) {
       show3DObjects(dataBuffer.rbegin()->boundingBoxes, cv::Size(4.0, 20.0),
-                    cv::Size(1200, 1200), imgNumber.str(), false);
+                    cv::Size(1200, 1200), imgNumber.str(), true);
     }
     bVis = false;
 
@@ -519,9 +526,7 @@ int main(int argc, const char *argv[]) {
                           params.ttc_lidar_outlier_threshold);
           cout << "ttcLidar: " << ttcLidar << endl;
           cout << "ttc_lidar_filtered: " << ttc_lidar_filtered << endl;
-          if (params.showTTCLidar) {
-            /* code */
-          }
+          // ttc_lidar_result.push_back(ttc_lidar_filtered);
 
           //// EOF STUDENT ASSIGNMENT
 
@@ -538,8 +543,10 @@ int main(int argc, const char *argv[]) {
           computeTTCCamera(next(dataBuffer.rbegin())->keypoints,
                            dataBuffer.rbegin()->keypoints, currBB->kptMatches,
                            sensorFrameRate, ttcCamera);
+          cout << "ttcCamera: " << ttcCamera << endl;
+          // ttc_camera_result.push_back(ttcCamera);
 
-          if (true) {
+          if (false) {
             DataFrame &prev_frame = *next(dataBuffer.rbegin());
             DataFrame &curr_frame = *dataBuffer.rbegin();
 
@@ -611,9 +618,9 @@ int main(int argc, const char *argv[]) {
                           cv::Scalar(0, 255, 0), 2);
 
             char str[200];
-            /* sprintf(str, "TTC Lidar : %f s, TTC Camera : %f s", ttcLidar,
-                    ttcCamera); */
-            sprintf(str, "TTC Lidar : %f s", ttcLidar);
+            sprintf(str, "TTC Lidar : %f s, TTC Camera : %f s", ttcLidar,
+                    ttcCamera);
+            // sprintf(str, "TTC Lidar : %f s", ttcLidar);
             putText(visImg, str, cv::Point2f(80, 50), cv::FONT_HERSHEY_PLAIN, 3,
                     cv::Scalar(255, 0, 255));
             sprintf(str, "No outlier TTC Lidar : %f s", ttc_lidar_filtered);
@@ -625,8 +632,8 @@ int main(int argc, const char *argv[]) {
             cv::imshow(windowName, visImg);
             cout << "Press key to continue to next frame" << endl;
             cv::waitKey(0);
-            cv::imwrite("../output/" + imgNumber.str() + "_ttc_lidar.png",
-                        visImg);
+            // cv::imwrite("../output/" + imgNumber.str() + "_ttc_lidar.png",
+            //             visImg);
           }
           bVis = false;
 
@@ -635,6 +642,16 @@ int main(int argc, const char *argv[]) {
     }
 
   }  // eof loop over all images
+
+  /* std::cout << "ttc lidar size: " << ttc_lidar_result.size() << std::endl;
+  for (double val : ttc_lidar_result) {
+    std::cout << val << std::endl;
+  }
+
+  std::cout << "ttc camera: " << ttc_camera_result.size() << std::endl;
+  for (double val : ttc_camera_result) {
+    std::cout << val << std::endl;
+  } */
 
   return 0;
 }
