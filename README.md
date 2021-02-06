@@ -9,6 +9,12 @@
 [ttc_lidar_008]: ./images/ttc_lidar_008.png "ttc_lidar_008"
 [ttc_camera_compare]: ./images/ttc_camera_compare.png "ttc_camera_compare"
 [ttc_compare]: ./images/ttc_compare.png "ttc_compare"
+[HARRIS]: ./images/HARRIS.png "HARRIS"
+[SHITOMASI]: ./images/SHITOMASI.png "SHITOMASI"
+[BRISK]: ./images/BRISK.png "BRISK"
+[FAST]: ./images/FAST.png "FAST"
+[ORB]: ./images/ORB.png "ORB"
+[SIFT]: ./images/SIFT.png "SIFT"
 
 
 # SFND 3D Object Tracking
@@ -92,7 +98,21 @@ Since the ttc-lidar value is calculated according to the formula `TTC = minXCurr
 ![ttc_lidar_008]
 
 ### FP.6 Performance Evaluation 2
-According to the spreadsheet and line graph, I think the top 2 stable ttc-camera are using *SIFT+SIFT* and *AKAZE+AKAZE* as detector and descriptor. Their result are most close to the ttc-lidar at the same frame, except frame_7 and frame_8. I think the gap are coming from lidar's outlier at that two frame. But considering the conclusion of mid-term project, I will choose *FAST+BRIEF* since it seems only has one ttc-camera result which is way off, and it consumes less time than *SIFT+SIFT* and *AKAZE+AKAZE*. If we can improve our method of filtering the outlier from keypoint match, I think *FAST+BRIEF* can be more stable. So my top 3 choose are:
+Below are the testing result of each detector and descriptor. Using HARRIS or ORB as detector basiclly can't work, too mutch keypoint matches are outlier. SIFT+ORB will run out of memory.
+
+![HARRIS]
+
+![SHITOMASI]
+
+![BRISK]
+
+![FAST]
+
+![ORB]
+
+![SIFT]
+
+I choose several combinations from above detector/descriptor which have good performance to compare together. According to the spreadsheet and line graph, I think the top 2 stable ttc-camera are using *SIFT+SIFT* and *AKAZE+AKAZE* as detector and descriptor. Their result are most close to the ttc-lidar at the same frame, except frame_7 and frame_8. I think the gap are coming from lidar's outlier at that two frame. But considering the conclusion of mid-term project, I will choose *FAST+BRIEF* since it seems only has one ttc-camera result which is way off, and it consumes less time than *SIFT+SIFT* and *AKAZE+AKAZE*. If we can improve our method of filtering the outlier from keypoint match, I think *FAST+BRIEF* can be more stable. So my top 3 choose are:
 1. FAST+BRIEF
 2. AKAZE+AKAZE
 3. SIFT+SIFT
